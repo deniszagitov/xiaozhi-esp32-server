@@ -41,6 +41,8 @@ _wakeup_response_lock = asyncio.Lock()
 
 async def handleHelloMessage(conn: "ConnectionHandler", msg_json):
     """处理hello消息"""
+    if getattr(conn, "live", None):
+        conn.live.validate_hello(msg_json)
     audio_params = msg_json.get("audio_params")
     if audio_params:
         format = audio_params.get("format")

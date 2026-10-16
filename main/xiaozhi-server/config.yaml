@@ -41,6 +41,15 @@ server:
   mqtt_signature_key: null
   # UDP网关配置
   udp_gateway: null
+
+# Optional speech-to-speech engine; see docs/gpt-live.md. The cascade is default.
+live:
+  enabled: false
+  # Empty means all devices when enabled; otherwise list Device-Id MAC addresses.
+  device_ids: []
+  api_key_env: OPENAI_API_KEY
+  voice: marin
+
 log:
   # 设置控制台输出的日志格式，时间、日志级别、标签、消息
   log_format: "<green>{time:YYMMDD HH:mm:ss}</green>[{version}_{selected_module}][<light-blue>{extra[tag]}</light-blue>]-<level>{level}</level>-<light-green>{message}</light-green>"

@@ -112,11 +112,11 @@ class ServerMCPManager:
                 return True
         return False
 
-    async def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
+    async def execute_tool(self, tool_name: str, arguments: Dict[str, Any], *, retry_on_error=True) -> Any:
         """执行工具调用，失败时会尝试重新连接"""
         logger.bind(tag=TAG).info(f"执行服务端MCP工具 {tool_name}，参数: {arguments}")
 
-        max_retries = 3  # 最大重试次数
+        max_retries = 3 if retry_on_error else 1
         retry_interval = 2  # 重试间隔(秒)
 
         # 找到对应的客户端

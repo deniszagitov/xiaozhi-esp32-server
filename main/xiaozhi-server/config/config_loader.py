@@ -81,6 +81,9 @@ async def get_config_from_api_async(config):
     # 如果服务器没有prompt_template，则从本地配置读取
     if not config_data.get("prompt_template"):
         config_data["prompt_template"] = config.get("prompt_template")
+    if "live" in config:
+        # Opt-in server setting until manager exposes a Live provider.
+        config_data["live"] = config["live"]
     return config_data
 
 

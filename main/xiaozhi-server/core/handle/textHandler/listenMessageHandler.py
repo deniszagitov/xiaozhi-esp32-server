@@ -27,6 +27,9 @@ class ListenTextMessageHandler(TextMessageHandler):
         return TextMessageType.LISTEN
 
     async def handle(self, conn: "ConnectionHandler", msg_json: Dict[str, Any]) -> None:
+        if getattr(conn, "live", None):
+            await conn.live.listen(msg_json)
+            return
         if "mode" in msg_json:
             conn.client_listen_mode = msg_json["mode"]
             conn.logger.bind(tag=TAG).debug(

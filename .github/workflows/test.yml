@@ -25,6 +25,8 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install pytest pytest-asyncio freezegun
+      - name: Install Opus runtime
+        run: sudo apt-get update && sudo apt-get install -y libopus0
       - name: Run smoke test
         working-directory: main/xiaozhi-server
         run: |
@@ -34,6 +36,14 @@ jobs:
             echo "::warning::Slice 2 not done yet — tests/test_smoke.py missing"
             exit 0
           fi
+      - name: Run GPT-Live offline tests
+        working-directory: main/xiaozhi-server
+        env:
+          RUN_LIVE_API_TESTS: '0'
+          PYTEST_CONFIG_FILE: ${{ runner.temp }}/xiaozhi-offline-config.yaml
+        run: |
+          printf '{}\n' > "$PYTEST_CONFIG_FILE"
+          pytest tests/test_live_voice.py tests/test_live_delegation.py tests/test_live_runtime.py -q
 
   java:
     name: Java (manager-api)

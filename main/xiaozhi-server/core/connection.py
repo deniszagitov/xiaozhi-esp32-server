@@ -45,6 +45,7 @@ from core.utils.prompt_manager import PromptManager
 from core.utils.voiceprint_provider import VoiceprintProvider
 from core.utils.util import get_system_error_response
 from core.utils import textUtils
+from core.providers.live.runtime import LiveRuntime, enabled_for_device
 
 
 TAG = __name__
@@ -199,6 +200,7 @@ class ConnectionHandler:
         self.calling = False
         # 标记当前是否为来电接听模式
         self.incoming_call = None
+        self.live = None
 
     async def handle_connection(self, ws: websockets.ServerConnection):
         try:
@@ -214,11 +216,13 @@ class ConnectionHandler:
                 self.client_ip = real_ip.split(",")[0].strip()
             else:
                 self.client_ip = ws.remote_address[0]
-            self.logger.bind(tag=TAG).info(
-                f"{self.client_ip} conn - Headers: {self.headers}"
-            )
+            logged_headers = {name: "[REDACTED]" if name.lower() in ("authorization", "cookie") else value
+                              for name, value in self.headers.items()}
+            self.logger.bind(tag=TAG).info(f"{self.client_ip} conn - Headers: {logged_headers}")
 
             self.device_id = self.headers.get("device-id", None)
+            if enabled_for_device(self.config, self.device_id):
+                self.live = LiveRuntime(self)
 
             # 认证通过,继续处理
             self.websocket = ws
@@ -277,6 +281,8 @@ class ConnectionHandler:
 
     async def _save_and_close(self, ws):
         """保存记忆并关闭连接"""
+        if self.live:
+            await self.live.close()
         try:
             # 守护线程1：独立生成标题（不依赖记忆模型）
             # 仅在服务端开启 chat_history 上报时才触发标题生成，
@@ -368,6 +374,11 @@ class ConnectionHandler:
         if isinstance(message, str):
             await handleTextMessage(self, message)
         elif isinstance(message, bytes):
+            if self.live:
+                pcm_frame = self._decode_opus_packet(message)
+                if pcm_frame:
+                    self.live.feed_pcm(pcm_frame)
+                return
             if self.vad is None or self.asr is None:
                 return
 
@@ -792,6 +803,16 @@ class ConnectionHandler:
         try:
             # 异步获取差异化配置
             await self._initialize_private_config_async()
+            if self.live and not self.need_bind:
+                if self.config.get("prompt") is not None:
+                    self.change_system_prompt(self.prompt_manager.get_quick_prompt(self.config["prompt"]))
+                await self.loop.run_in_executor(self.executor, self._initialize_memory)
+                self.func_handler = UnifiedToolHandler(self)
+                await self.func_handler._initialize()
+                if not self.func_handler.finish_init:
+                    raise RuntimeError("Live tools did not initialize")
+                self.live.configure()
+                return
             # 在线程池中初始化组件
             self.executor.submit(self._initialize_components)
         except Exception as e:
@@ -927,6 +948,8 @@ class ConnectionHandler:
             ]
 
         # 使用 run_in_executor 在线程池中执行 initialize_modules，避免阻塞主循环
+        if self.live and not self.need_bind:
+            init_vad = init_asr = init_tts = False
         try:
             modules = await self.loop.run_in_executor(
                 None,  # 使用默认线程池
@@ -1543,6 +1566,8 @@ class ConnectionHandler:
     async def close(self, ws=None):
         """资源清理方法"""
         try:
+            if self.live:
+                await self.live.close()
             # 清理 VAD 连接资源
             if (
                     hasattr(self, "vad")

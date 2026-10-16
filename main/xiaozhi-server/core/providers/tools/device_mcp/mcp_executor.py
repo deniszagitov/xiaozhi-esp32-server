@@ -60,10 +60,13 @@ class DeviceMCPExecutor(ToolExecutor):
 
             return ActionResponse(action=Action.REQLLM, result=str(result))
 
-        except ValueError as e:
-            return ActionResponse(action=Action.NOTFOUND, response=str(e))
         except Exception as e:
-            return ActionResponse(action=Action.ERROR, response=str(e))
+            if getattr(conn, "live", None):
+                # Validation can fail after dispatch, so failure is not proof of no action.
+                return ActionResponse(action=Action.ERROR,
+                    result={"execution_status": "unknown", "message": "MCP response unavailable; do not retry automatically"})
+            return ActionResponse(action=Action.NOTFOUND if isinstance(e, ValueError) else Action.ERROR,
+                                  response=str(e))
 
     def get_tools(self) -> Dict[str, ToolDefinition]:
         """获取所有设备端MCP工具"""

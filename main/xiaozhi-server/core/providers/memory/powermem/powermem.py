@@ -215,7 +215,11 @@ class MemoryProvider(MemoryProviderBase):
 
         return None
 
-    async def query_memory(self, query: str) -> str:
+    async def query_memory_checked(self, query: str) -> str:
+        """Required lookup: distinguish an empty result from provider failure."""
+        return await self.query_memory(query, required=True)
+
+    async def query_memory(self, query: str, *, required=False) -> str:
         """
         Query memories from PowerMem based on similarity search.
 
@@ -226,11 +230,15 @@ class MemoryProvider(MemoryProviderBase):
             Formatted string of relevant memories or empty string if none found
         """
         if not self.use_powermem or self.memory_client is None:
+            if required:
+                raise RuntimeError("PowerMem is unavailable")
             logger.bind(tag=TAG).warning("PowerMem is not available, skipping query_memory")
             return ""
 
         try:
             if not getattr(self, "role_id", None):
+                if required:
+                    raise RuntimeError("PowerMem identity is not initialized")
                 logger.bind(tag=TAG).debug("No role_id set, returning empty memory")
                 return ""
 
@@ -311,10 +319,13 @@ class MemoryProvider(MemoryProviderBase):
                     result_parts.append(f"【相关记忆】\n{memories_str}")
 
             final_result = "\n\n".join(result_parts)
-            logger.bind(tag=TAG).debug(f"Query results: {final_result}")
+            if not required:
+                logger.bind(tag=TAG).debug(f"Query results: {final_result}")
             return final_result
 
         except Exception as e:
+            if required:
+                raise RuntimeError("PowerMem lookup failed") from None
             logger.bind(tag=TAG).error(f"Error querying memory: {str(e)}")
             logger.bind(tag=TAG).debug(f"Detailed error: {traceback.format_exc()}")
             return ""

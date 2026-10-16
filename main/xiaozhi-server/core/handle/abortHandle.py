@@ -7,6 +7,9 @@ TAG = __name__
 
 
 async def handleAbortMessage(conn: "ConnectionHandler"):
+    if getattr(conn, "live", None):
+        await conn.live.abort()
+        return
     conn.logger.bind(tag=TAG).info("Abort message received")
     # 设置成打断状态，会自动打断llm、tts任务
     conn.close_after_chat = False

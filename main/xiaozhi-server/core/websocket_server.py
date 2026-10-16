@@ -44,11 +44,12 @@ class WebSocketServer:
         self.config = config
         self.logger = setup_logging(config)
         self.config_lock = asyncio.Lock()
+        live_only = config.get("live", {}).get("enabled") is True and not config["live"].get("device_ids")
         modules = initialize_modules(
             self.logger,
             self.config,
-            "VAD" in self.config["selected_module"],
-            "ASR" in self.config["selected_module"],
+            not live_only and "VAD" in self.config["selected_module"],
+            not live_only and "ASR" in self.config["selected_module"],
             "LLM" in self.config["selected_module"],
             False,
             "Memory" in self.config["selected_module"],

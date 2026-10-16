@@ -37,18 +37,28 @@ class ServerMCPExecutor(ToolExecutor):
             if tool_name.startswith("mcp_"):
                 actual_tool_name = tool_name[4:]
 
-            result = await self.mcp_manager.execute_tool(actual_tool_name, arguments)
+            live = bool(getattr(conn, "live", None))
+            result = await self.mcp_manager.execute_tool(actual_tool_name, arguments, retry_on_error=not live)
+
+            if live and getattr(result, "isError", False):
+                return ActionResponse(action=Action.ERROR, result=str(result))
+
+            if live:
+                content = getattr(result, "structuredContent", None)
+                if content is None:
+                    content = [getattr(item, "text", "") for item in getattr(result, "content", [])
+                               if getattr(item, "type", "") == "text"]
+                return ActionResponse(action=Action.REQLLM, result=content)
 
             return ActionResponse(action=Action.REQLLM, result=str(result))
 
-        except ValueError as e:
-            return ActionResponse(
-                action=Action.NOTFOUND,
-                response=str(e),
-            )
         except Exception as e:
+            if getattr(conn, "live", None):
+                # Validation can fail after dispatch, so failure is not proof of no action.
+                return ActionResponse(action=Action.ERROR,
+                    result={"execution_status": "unknown", "message": "MCP response unavailable; do not retry automatically"})
             return ActionResponse(
-                action=Action.ERROR,
+                action=Action.NOTFOUND if isinstance(e, ValueError) else Action.ERROR,
                 response=str(e),
             )
 
