@@ -1,0 +1,29 @@
+services:
+  xiaozhi-esp32-server:
+    depends_on:
+      ddgs-mcp:
+        condition: service_healthy
+
+  # No API key is required for DDGS web and news search.
+  ddgs-mcp:
+    build:
+      context: ./mcp/ddgs
+      args:
+        DDGS_VERSION: 9.14.4
+        MCP_PROXY_VERSION: 0.10.0
+    image: xiaozhi-ddgs-mcp:9.14.4
+    container_name: xiaozhi-ddgs-mcp
+    restart: always
+    networks:
+      - default
+    expose:
+      - 8000
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import socket; socket.create_connection(('127.0.0.1', 8000), 2).close()"
+      interval: 10s
+      timeout: 5s
+      retries: 6
