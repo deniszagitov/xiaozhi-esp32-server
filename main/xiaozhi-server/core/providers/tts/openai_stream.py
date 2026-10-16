@@ -31,7 +31,9 @@ class TTSProvider(TTSProviderBase):
         self.instructions = config.get("instructions")
         self.speed = float(config.get("speed") or 1.0)
         self._apply_percentage_params(config)
-        self.audio_file_type = "pcm"
+        # The inherited cache/file path needs a self-describing audio container.
+        # The streaming path below still requests raw PCM.
+        self.audio_file_type = "wav"
         self.source_sample_rate = 24000
 
         model_key_msg = check_model_key("TTS", self.api_key)
@@ -121,7 +123,7 @@ class TTSProvider(TTSProviderBase):
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 self.api_url,
-                json=self._build_payload(text),
+                json={**self._build_payload(text), "response_format": "wav"},
                 headers=headers,
             ) as response:
                 if response.status != 200:

@@ -43,7 +43,9 @@ jobs:
           PYTEST_CONFIG_FILE: ${{ runner.temp }}/xiaozhi-offline-config.yaml
         run: |
           printf '{}\n' > "$PYTEST_CONFIG_FILE"
-          pytest tests/test_live_voice.py tests/test_live_delegation.py tests/test_live_runtime.py -q
+          mkdir -p data
+          cp "$PYTEST_CONFIG_FILE" data/.config.yaml
+          pytest tests/test_live_voice.py tests/test_live_delegation.py tests/test_live_runtime.py tests/test_openai_streaming_audio.py tests/test_prompt_settings.py -q
 
   java:
     name: Java (manager-api)

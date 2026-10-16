@@ -1,6 +1,8 @@
 import asyncio
 import base64
 import json
+import io
+import wave
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -54,6 +56,9 @@ class FakeResponse:
 
     async def __aexit__(self, exc_type, exc, traceback):
         return False
+
+    async def read(self):
+        return b"".join(self.content.chunks)
 
 
 class FakeClientSession:
@@ -286,6 +291,26 @@ class OpenAIStreamingTTSTests(unittest.IsolatedAsyncioTestCase):
 
 
 class OpenAIStreamingTTSPublicLifecycleTests(unittest.TestCase):
+    def test_nonstreaming_cache_uses_decodable_wav(self):
+        wav = io.BytesIO()
+        with wave.open(wav, "wb") as audio:
+            audio.setnchannels(1)
+            audio.setsampwidth(2)
+            audio.setframerate(24000)
+            audio.writeframes(b"\x00\x00" * 2400)
+        provider = TTSProvider(
+            {"api_key": "synthetic-key", "output_dir": "tmp/"}, True
+        )
+        provider.conn = SimpleNamespace(sample_rate=16000)
+        FakeClientSession.response = FakeResponse([wav.getvalue()])
+        with patch(
+            "core.providers.tts.openai_stream.aiohttp.ClientSession", FakeClientSession
+        ):
+            packets = provider.to_tts("synthetic text")
+        self.assertEqual(FakeClientSession.last_request["json"]["response_format"], "wav")
+        self.assertEqual(provider.audio_file_type, "wav")
+        self.assertTrue(packets)
+
     def test_public_stream_outputs_opus_before_http_body_finishes(self):
         provider = TTSProvider(
             {
