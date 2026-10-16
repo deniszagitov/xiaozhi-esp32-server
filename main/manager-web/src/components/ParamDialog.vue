@@ -34,7 +34,7 @@
 
         <el-form-item :label="$t('paramDialog.paramValue')" prop="paramValue" class="form-item">
           <el-input
-            v-if="form.valueType !== 'json' && form.valueType !== 'array'"
+            v-if="form.valueType !== 'text' && form.valueType !== 'json' && form.valueType !== 'array'"
             v-model="form.paramValue"
             :placeholder="$t('paramDialog.paramValuePlaceholder')"
             class="custom-input"
@@ -90,6 +90,7 @@ export default {
       saving: false,
       valueTypeOptions: [
         { value: 'string' },
+        { value: 'text' },
         { value: 'number' },
         { value: 'boolean' },
         { value: 'array' },

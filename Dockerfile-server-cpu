@@ -1,0 +1,23 @@
+# CPU-only build from this repository, without a prebuilt application base.
+FROM python:3.10-slim-bookworm
+
+ENV PYTHONIOENCODING=utf-8 \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libopus0 ffmpeg ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/xiaozhi-esp32-server
+COPY main/xiaozhi-server/requirements.txt /tmp/requirements.txt
+COPY requirements-container.txt /tmp/constraints.txt
+# Install the CPU wheels first so the general dependency resolution keeps them.
+RUN pip install --no-cache-dir torch==2.2.2 torchaudio==2.2.2 \
+        --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r /tmp/requirements.txt -c /tmp/constraints.txt
+
+COPY main/xiaozhi-server .
+EXPOSE 8000 8003
+CMD ["python", "app.py"]

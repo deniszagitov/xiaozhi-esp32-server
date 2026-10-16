@@ -56,7 +56,8 @@ class ConfigServiceImplTest {
         SysParamsService sysParamsService = mock(SysParamsService.class);
         SysParamsDTO enabled = parameter("server.features.enabled", "true", "boolean");
         SysParamsDTO labels = parameter("server.features.labels", "first;second", "array");
-        when(sysParamsService.list(anyMap())).thenReturn(List.of(enabled, labels));
+        SysParamsDTO prompt = parameter("assistant.prompts.exit", "Use the configured language.", "text");
+        when(sysParamsService.list(anyMap())).thenReturn(List.of(enabled, labels, prompt));
         ConfigServiceImpl service = newService(sysParamsService, mock(RedisUtils.class));
         Map<String, Object> config = new HashMap<>();
 
@@ -67,6 +68,9 @@ class ConfigServiceImplTest {
         Map<?, ?> features = assertInstanceOf(Map.class, server.get("features"));
         assertEquals(true, features.get("enabled"));
         assertEquals(List.of("first", "second"), features.get("labels"));
+        Map<?, ?> assistant = assertInstanceOf(Map.class, config.get("assistant"));
+        Map<?, ?> prompts = assertInstanceOf(Map.class, assistant.get("prompts"));
+        assertEquals("Use the configured language.", prompts.get("exit"));
     }
 
     private static SysParamsDTO parameter(String code, String value, String type) {

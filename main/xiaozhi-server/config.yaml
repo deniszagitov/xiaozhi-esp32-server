@@ -523,6 +523,19 @@ ASR:
     base_url: https://api.openai.com/v1/audio/transcriptions
     model_name: gpt-4o-mini-transcribe
     output_dir: tmp/
+  OpenAIRealtimeASR:
+    # OpenAI Realtime transcription sends audio continuously over WebSocket.
+    # Local VAD detects the end of speech and commits the provider audio buffer.
+    type: openai_realtime
+    api_key: your OpenAI API key
+    api_url: wss://api.openai.com/v1/realtime?intent=transcription
+    model: gpt-realtime-whisper
+    # Optional language hint, for example zh, en, or ru. Empty means auto-detect.
+    language: ""
+    # Latency and accuracy tradeoff: minimal, low, medium, high, or xhigh.
+    delay: low
+    input_sample_rate: 16000
+    output_dir: tmp/
   GroqASR:
     # Groq语音识别服务，需要先在Groq Console创建API密钥
     # 申请步骤：
@@ -1096,6 +1109,17 @@ TTS:
     speed: 1
     output_dir: tmp/
     # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+  OpenAIStreamTTS:
+    # OpenAI streaming TTS plays a chunked HTTP response as it is generated.
+    type: openai_stream
+    api_key: your OpenAI API key
+    api_url: https://api.openai.com/v1/audio/speech
+    model: gpt-4o-mini-tts
+    voice: onyx
+    # Optional. Use only with models that support voice instructions.
+    instructions: ""
+    speed: 1
+    output_dir: tmp/
   CustomTTS:
     # 自定义的TTS接口服务，请求参数可自定义，可接入众多TTS服务
     # 以本地部署的KokoroTTS为例

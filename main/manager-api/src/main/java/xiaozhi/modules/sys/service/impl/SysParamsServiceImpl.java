@@ -116,6 +116,7 @@ public class SysParamsServiceImpl extends BaseServiceImpl<SysParamsDao, SysParam
 
         switch (valueType) {
             case "string":
+            case "text":
                 break;
             case "array":
                 break;

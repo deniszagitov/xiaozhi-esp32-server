@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import xiaozhi.modules.llm.service.LLMService;
 import xiaozhi.modules.model.entity.ModelConfigEntity;
 import xiaozhi.modules.model.service.ModelConfigService;
+import xiaozhi.modules.sys.service.SysParamsService;
 
 /**
  * OpenAI风格API的LLM服务实现
@@ -45,6 +46,12 @@ public class OpenAIStyleLLMServiceImpl implements LLMService {
     @Autowired
     private ModelConfigService modelConfigService;
 
+    @Autowired
+    private SysParamsService sysParamsService;
+
+    private static final String SUMMARY_PROMPT_PARAM = "assistant.prompts.summary";
+    private static final String TITLE_PROMPT_PARAM = "assistant.prompts.title";
+
     private final RestTemplate restTemplate = new RestTemplate();
 
     /**
@@ -60,9 +67,18 @@ public class OpenAIStyleLLMServiceImpl implements LLMService {
         }
     }
 
-    private static final String DEFAULT_SUMMARY_PROMPT = "你是一个经验丰富的记忆总结者，擅长将对话内容进行总结摘要，遵循以下规则：\n1、总结用户的重要信息，以便在未来的对话中提供更个性化的服务\n2、不要重复总结，不要遗忘之前记忆，除非原来的记忆超过了1800字，否则不要遗忘、不要压缩用户的历史记忆\n3、用户操控的设备音量、播放音乐、天气、退出、不想对话等和用户本身无关的内容，这些信息不需要加入到总结中\n4、聊天内容中的今天的日期时间、今天的天气情况与用户事件无关的数据，这些信息如果当成记忆存储会影响后续对话，这些信息不需要加入到总结中\n5、不要把设备操控的成果结果和失败结果加入到总结中，也不要把用户的一些废话加入到总结中\n6、不要为了总结而总结，如果用户的聊天没有意义，请返回原来的历史记录也是可以的\n7、只需要返回总结摘要，严格控制在1800字内\n8、不要包含代码、xml，不需要解释、注释和说明，保存记忆时仅从对话提取信息，不要混入示例内容\n9、如果提供了历史记忆，请将新对话内容与历史记忆进行智能合并，保留有价值的历史信息，同时添加新的重要信息\n\n历史记忆：\n{history_memory}\n\n新对话内容：\n{conversation}";
+    private String getConfiguredPrompt(String paramCode) {
+        String prompt = sysParamsService.getValue(paramCode, true);
+        if (StringUtils.isBlank(prompt)) {
+            log.warn("未配置提示词参数: {}", paramCode);
+            return null;
+        }
+        return prompt;
+    }
 
-    private static final String DEFAULT_TITLE_PROMPT = "请根据以下对话内容，生成一个简洁的会话标题（约15字以内），只返回标题，不要包含任何解释或标点符号：\n{conversation}";
+    private String resolvePrompt(String promptTemplate, String paramCode) {
+        return StringUtils.isNotBlank(promptTemplate) ? promptTemplate : getConfiguredPrompt(paramCode);
+    }
 
     @Override
     public String generateSummary(String conversation) {
@@ -109,9 +125,12 @@ public class OpenAIStyleLLMServiceImpl implements LLMService {
                 return "LLM配置不完整，无法生成总结";
             }
 
-            // 构建提示词
-            String prompt = (promptTemplate != null ? promptTemplate : DEFAULT_SUMMARY_PROMPT).replace("{conversation}",
-                    conversation);
+            // 构建提示词。默认模板由 Parameter Management 提供。
+            String configuredPrompt = resolvePrompt(promptTemplate, SUMMARY_PROMPT_PARAM);
+            if (StringUtils.isBlank(configuredPrompt)) {
+                return "生成总结失败：未配置总结提示词";
+            }
+            String prompt = configuredPrompt.replace("{conversation}", conversation);
 
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
@@ -202,8 +221,12 @@ public class OpenAIStyleLLMServiceImpl implements LLMService {
                 return "LLM配置不完整，无法生成总结";
             }
 
-            // 构建提示词，包含历史记忆
-            String prompt = (promptTemplate != null ? promptTemplate : DEFAULT_SUMMARY_PROMPT)
+            // 构建提示词，包含历史记忆。默认模板由 Parameter Management 提供。
+            String configuredPrompt = resolvePrompt(promptTemplate, SUMMARY_PROMPT_PARAM);
+            if (StringUtils.isBlank(configuredPrompt)) {
+                return "生成总结失败：未配置总结提示词";
+            }
+            String prompt = configuredPrompt
                     .replace("{history_memory}", historyMemory != null ? historyMemory : "无历史记忆")
                     .replace("{conversation}", conversation);
 
@@ -360,7 +383,11 @@ public class OpenAIStyleLLMServiceImpl implements LLMService {
                 return null;
             }
 
-            String prompt = DEFAULT_TITLE_PROMPT.replace("{conversation}", conversation);
+            String configuredPrompt = getConfiguredPrompt(TITLE_PROMPT_PARAM);
+            if (StringUtils.isBlank(configuredPrompt)) {
+                return null;
+            }
+            String prompt = configuredPrompt.replace("{conversation}", conversation);
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", model != null ? model : "gpt-3.5-turbo");

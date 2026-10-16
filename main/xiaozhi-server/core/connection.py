@@ -718,27 +718,6 @@ class ConnectionHandler:
             content="已直接回复", is_temporary=True,
         ))
 
-        # 示例2：真实工具调用（handle_exit_intent）
-        if "handle_exit_intent" in tool_names:
-            tc_id = "fewshot_exit_001"
-            self.dialogue.put(Message(role="user", content="拜拜", is_temporary=True))
-            self.dialogue.put(Message(
-                role="assistant",
-                tool_calls=[{
-                    "id": tc_id,
-                    "function": {"arguments": '{"say_goodbye": "再见，下次再聊~"}', "name": "handle_exit_intent"},
-                    "type": "function", "index": 0,
-                }],
-                is_temporary=True,
-            ))
-            self.dialogue.put(Message(
-                role="tool", tool_call_id=tc_id,
-                content="退出意图已处理", is_temporary=True,
-            ))
-            self.dialogue.put(Message(
-                role="assistant", content="再见，下次再聊~", is_temporary=True,
-            ))
-
         self.logger.bind(tag=TAG).debug("已注入工具调用 few-shot 示例")
 
     def _init_report_threads(self):
@@ -926,6 +905,9 @@ class ConnectionHandler:
                 ] = expanded_functions
         if private_config.get("prompt", None) is not None:
             self.config["prompt"] = private_config["prompt"]
+        for key in ("assistant", "conversation_language"):
+            if private_config.get(key) is not None:
+                self.config[key] = private_config[key]
         # 获取声纹信息
         if private_config.get("voiceprint", None) is not None:
             self.config["voiceprint"] = private_config["voiceprint"]

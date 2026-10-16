@@ -345,6 +345,7 @@ export default {
   'paramDialog.requiredParamValue': '請輸入參數值',
   'paramDialog.requiredValueType': '請選擇值類型',
   'paramDialog.stringType': '字串(string)',
+  'paramDialog.textType': '長文字(text)',
   'paramDialog.numberType': '數字(number)',
   'paramDialog.booleanType': '布林值(boolean)',
   'paramDialog.arrayType': '陣列(array)',

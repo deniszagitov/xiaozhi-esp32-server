@@ -345,6 +345,7 @@ export default {
   'paramDialog.requiredParamValue': 'Please enter parameter value',
   'paramDialog.requiredValueType': 'Please select value type',
   'paramDialog.stringType': 'String',
+  'paramDialog.textType': 'Long text',
   'paramDialog.numberType': 'Number',
   'paramDialog.booleanType': 'Boolean',
   'paramDialog.arrayType': 'Array',

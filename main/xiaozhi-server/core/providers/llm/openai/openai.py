@@ -71,6 +71,21 @@ class LLMProvider(LLMProviderBase):
             logger.bind(tag=TAG).error(model_key_msg)
         self.client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url, timeout=custom_timeout)
 
+    def _uses_max_completion_tokens(self):
+        """Return whether this model uses the modern token-limit parameter."""
+        model_name = (self.model_name or "").lower()
+        return model_name.startswith(("gpt-5", "o1", "o3", "o4"))
+
+    def _apply_token_limit(self, request_params, value):
+        if value is None:
+            return
+        parameter = (
+            "max_completion_tokens"
+            if self._uses_max_completion_tokens()
+            else "max_tokens"
+        )
+        request_params[parameter] = value
+
     @staticmethod
     def normalize_dialogue(dialogue):
         """自动修复 dialogue 中缺失 content 的消息"""
@@ -100,11 +115,14 @@ class LLMProvider(LLMProviderBase):
 
         # 添加可选参数,只有当参数不为None时才添加
         optional_params = {
-            "max_tokens": kwargs.get("max_tokens", self.max_tokens),
             "temperature": kwargs.get("temperature", self.temperature),
             "top_p": kwargs.get("top_p", self.top_p),
             "frequency_penalty": kwargs.get("frequency_penalty", self.frequency_penalty),
         }
+
+        self._apply_token_limit(
+            request_params, kwargs.get("max_tokens", self.max_tokens)
+        )
 
         for key, value in optional_params.items():
             if value is not None:
@@ -146,11 +164,14 @@ class LLMProvider(LLMProviderBase):
         }
 
         optional_params = {
-            "max_tokens": kwargs.get("max_tokens", self.max_tokens),
             "temperature": kwargs.get("temperature", self.temperature),
             "top_p": kwargs.get("top_p", self.top_p),
             "frequency_penalty": kwargs.get("frequency_penalty", self.frequency_penalty),
         }
+
+        self._apply_token_limit(
+            request_params, kwargs.get("max_tokens", self.max_tokens)
+        )
 
         for key, value in optional_params.items():
             if value is not None:

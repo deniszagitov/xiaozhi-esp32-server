@@ -1,12 +1,14 @@
 """服务端插件工具执行器"""
 
 import asyncio
+from copy import deepcopy
 from typing import Dict, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.connection import ConnectionHandler
 from ..base import ToolType, ToolDefinition, ToolExecutor
 from plugins_func.register import all_function_registry, module_func_map, Action, ActionResponse
+from core.utils.prompt_settings import EXIT_PROMPT_KEY, get_prompt
 
 
 class ServerPluginExecutor(ToolExecutor):
@@ -112,23 +114,29 @@ class ServerPluginExecutor(ToolExecutor):
         for func_name in all_required_functions:
             func_item = all_function_registry.get(func_name)
             if func_item:
+                function_description = deepcopy(func_item.description)
+                if func_name == "handle_exit_intent":
+                    exit_prompt = get_prompt(self.config, EXIT_PROMPT_KEY)
+                    if exit_prompt:
+                        function_description["function"]["description"] = exit_prompt
+
                 # 从函数注册中获取描述（支持模块名和函数名的双层查找）
                 fun_description = self._get_plugin_description(func_name)
                 if fun_description is not None and len(fun_description) > 0:
-                    if "function" in func_item.description and isinstance(
-                        func_item.description["function"], dict
+                    if "function" in function_description and isinstance(
+                        function_description["function"], dict
                     ):
-                        func_item.description["function"][
+                        function_description["function"][
                             "description"
                         ] = fun_description
 
                 # 新闻插件：根据配置更新新闻源参数描述
                 if func_name == "get_news_from_newsnow":
-                    self._init_news_source_description(func_item, func_name)
+                    self._init_news_source_description(function_description, func_name)
 
                 tools[func_name] = ToolDefinition(
                     name=func_name,
-                    description=func_item.description,
+                    description=function_description,
                     tool_type=ToolType.SERVER_PLUGIN,
                 )
 
@@ -138,7 +146,7 @@ class ServerPluginExecutor(ToolExecutor):
         """检查是否有指定的服务端插件工具"""
         return tool_name in all_function_registry
 
-    def _init_news_source_description(self, func_item, func_name):
+    def _init_news_source_description(self, description, func_name):
         """根据连接配置初始化新闻工具的参数描述"""
         news_sources = (
             self.config.get("plugins", {})
@@ -149,7 +157,7 @@ class ServerPluginExecutor(ToolExecutor):
             news_sources = "澎湃新闻;百度热搜;财联社"
         sources_str = news_sources.replace(";", "、")
         try:
-            func_item.description["function"]["parameters"]["properties"]["source"][
+            description["function"]["parameters"]["properties"]["source"][
                 "description"
             ] = f"新闻源的标准中文名称，例如{sources_str}等。可选参数，如果不提供则使用默认新闻源"
         except (KeyError, TypeError):

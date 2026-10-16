@@ -12,17 +12,18 @@ if TYPE_CHECKING:
     from core.connection import ConnectionHandler
 from config.logger import setup_logging
 from jinja2 import Template
+from core.utils.prompt_settings import EXIT_PROMPT_KEY, get_prompt
 
 TAG = __name__
 
 WEEKDAY_MAP = {
-    "Monday": "星期一",
-    "Tuesday": "星期二",
-    "Wednesday": "星期三",
-    "Thursday": "星期四",
-    "Friday": "星期五",
-    "Saturday": "星期六",
-    "Sunday": "星期日",
+    "Monday": "Monday",
+    "Tuesday": "Tuesday",
+    "Wednesday": "Wednesday",
+    "Thursday": "Thursday",
+    "Friday": "Friday",
+    "Saturday": "Saturday",
+    "Sunday": "Sunday",
 }
 
 EMOJI_List = [
@@ -48,6 +49,15 @@ EMOJI_List = [
     "😜",
     "🙄",
 ]
+
+
+def get_conversation_language(config: Dict[str, Any]) -> str | None:
+    """Return an explicit interaction language, never the TTS language."""
+    for key in ("conversation_language", "language"):
+        value = config.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 class PromptManager:
@@ -274,14 +284,11 @@ class PromptManager:
                         or ""
                     )
 
-            # 获取TTS选择的语言，默认值为中文
-            language = (
-                self.config.get("TTS", {})
-                .get(self.config.get("selected_module", {}).get("TTS", ""), {})
-                .get("language")
-                or "中文"
-            )
-            self.logger.bind(tag=TAG).debug(f"获取到选择的语言: {language}")
+            # The interaction language is independent from the TTS voice.
+            # For example, an OpenAI TTS voice can be Multilingual while the
+            # agent is configured to answer in Russian.
+            language = get_conversation_language(self.config)
+            self.logger.bind(tag=TAG).debug(f"获取到对话语言: {language or '未指定'}")
 
             # 替换模板变量
             template = Template(self.base_prompt_template)
@@ -298,6 +305,7 @@ class PromptManager:
                 client_ip=client_ip,
                 dynamic_context=self.context_data,
                 language=language,
+                exit_prompt=get_prompt(self.config, EXIT_PROMPT_KEY),
                 *args,
                 **kwargs,
             )

@@ -345,6 +345,7 @@ export default {
   'paramDialog.requiredParamValue': 'Bitte Parameter-Wert eingeben',
   'paramDialog.requiredValueType': 'Bitte Werttyp auswählen',
   'paramDialog.stringType': 'Zeichenkette',
+  'paramDialog.textType': 'Langer Text',
   'paramDialog.numberType': 'Zahl',
   'paramDialog.booleanType': 'Boolesch',
   'paramDialog.arrayType': 'Array',

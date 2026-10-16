@@ -345,6 +345,7 @@ export default {
   'paramDialog.requiredParamValue': 'Vui lòng nhập giá trị tham số',
   'paramDialog.requiredValueType': 'Vui lòng chọn loại giá trị',
   'paramDialog.stringType': 'Chuỗi',
+  'paramDialog.textType': 'Văn bản dài',
   'paramDialog.numberType': 'Số',
   'paramDialog.booleanType': 'Boolean',
   'paramDialog.arrayType': 'Mảng',
