@@ -5,3 +5,19 @@ __pycache__
 Dockerfile
 tmp/
 data/
+
+# Private configuration and local runtime state are mounted at runtime.
+**/.config.yaml
+**/.mcp_server_settings.json
+**/.secrets.yaml
+**/.private_config.yaml
+**/.env.local
+**/.env
+**/tmp/
+**/.venv*/
+**/__pycache__/
+main/xiaozhi-server/data/
+main/xiaozhi-server/mysql/
+main/xiaozhi-server/uploadfile/
+main/xiaozhi-server/audio_ref/
+main/xiaozhi-server/mcp_server_settings.json
